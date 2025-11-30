@@ -28,6 +28,9 @@ class Arthur_AI_Admin_Page {
             return;
         }
 
+        $module          = Arthur_AI_Modules::get_module( 'content' );
+        $allowed_actions = $module ? $module->get_allowed_actions() : array();
+
         wp_enqueue_style(
             'arthur-ai-admin',
             plugins_url( 'admin/css/arthur-ai-admin.css', dirname( __FILE__ ) ),
@@ -53,6 +56,7 @@ class Arthur_AI_Admin_Page {
                 'adminUrl'      => admin_url(),
                 'moduleId'      => 'content',
                 'editPostUrlBase' => admin_url( 'post.php?action=edit&post=' ),
+                'allowedActions'=> $allowed_actions,
                 'i18nWorking'   => __( 'Working...', 'arthur-ai' ),
                 'i18nSending'   => __( 'Sending request to Arthur...', 'arthur-ai' ),
                 'i18nActionType'=> __( 'Action type', 'arthur-ai' ),

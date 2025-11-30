@@ -22,6 +22,73 @@ jQuery(document).ready(function ($) {
         return;
     }
 
+    var allowedActions = Array.isArray(arthurAiAdmin.allowedActions) ? arthurAiAdmin.allowedActions : [];
+
+    function escapeHtml(str) {
+        return $('<div>').text(str || '').html();
+    }
+
+    function formatActionLabel(actionType) {
+        if (!actionType) {
+            return 'Unknown action';
+        }
+        return actionType.replace(/_/g, ' ').replace(/\b\w/g, function (c) {
+            return c.toUpperCase();
+        });
+    }
+
+    function renderStatusRow(opts) {
+        var statusClass = 'is-unknown';
+        var icon = '!';
+        var label = 'Untested';
+
+        if (opts.status === 'safe') {
+            statusClass = 'is-safe';
+            icon = '✓';
+            label = 'Safe';
+        } else if (opts.status === 'warning') {
+            statusClass = 'is-warning';
+            icon = '!';
+            label = 'Untested';
+        } else if (opts.status === 'error') {
+            statusClass = 'is-error';
+            icon = '✕';
+            label = 'Unable';
+        }
+
+        return '' +
+            '<li class="arthur-ai-report-item ' + statusClass + '">' +
+            '  <span class="arthur-ai-report-icon" aria-hidden="true">' + icon + '</span>' +
+            '  <div class="arthur-ai-report-copy">' +
+            '    <div class="arthur-ai-report-title">' + escapeHtml(opts.title) + '</div>' +
+            '    <div class="arthur-ai-report-detail">' + escapeHtml(opts.detail) + '</div>' +
+            '  </div>' +
+            '  <span class="arthur-ai-report-tag">' + label + '</span>' +
+            '</li>';
+    }
+
+    function normalizeActions(data) {
+        var actions = [];
+
+        if (data && Array.isArray(data.actions) && data.actions.length) {
+            actions = data.actions.slice();
+        } else if (data && data.result && Array.isArray(data.result.actions) && data.result.actions.length) {
+            actions = data.result.actions.slice();
+        }
+
+        // Fallback to the single action structure the API already returns.
+        if (!actions.length && data && data.action) {
+            actions.push({
+                action_type: data.action.action_type,
+                target_post_id: data.result ? (data.result.post_id || data.action.target_post_id || null) : null,
+                success: data.result ? data.result.success : undefined,
+                message: data.result ? data.result.message : undefined,
+            });
+        }
+
+        return actions;
+    }
+
     $form.on('submit', function (e) {
         e.preventDefault();
 
@@ -68,22 +135,83 @@ jQuery(document).ready(function ($) {
                     var action  = data.action || {};
                     var result  = data.result || {};
                     var postId  = result.post_id || action.target_post_id || null;
-                    var actionType = action.action_type || 'unknown';
+                    var actionsList = normalizeActions(data);
+                    var primaryActionType = action.action_type || (actionsList[0] && (actionsList[0].action_type || actionsList[0].type)) || "unknown";
 
                     html += '<div class="arthur-ai-result-card">';
                     html += '<div class="arthur-ai-result-header">';
-                    html += '<span class="arthur-ai-pill arthur-ai-pill-success">Success</span>';
-                    html += '<span class="arthur-ai-result-action">' + arthurAiAdmin.i18nActionType + ': <code>' + actionType + '</code></span>';
+                    html += '<div class="arthur-ai-result-meta">';
+                    html += '<span class="arthur-ai-pill ' + (result.success === false ? 'arthur-ai-pill-error' : 'arthur-ai-pill-success') + '">' + (result.success === false ? 'Issue' : 'Success') + '</span>';
+                    html += '<span class="arthur-ai-result-action">' + (arthurAiAdmin.i18nActionType || 'Action type') + ': <code>' + escapeHtml(primaryActionType) + '</code></span>';
                     if (postId) {
                         html += '<span class="arthur-ai-result-target">Post ID: ' + postId + '</span>';
                     } else {
                         html += '<span class="arthur-ai-result-target">' + (arthurAiAdmin.i18nSiteWide || 'Site-wide action') + '</span>';
                     }
                     html += '</div>';
+                    html += '</div>';
 
-                    if (result.message) {
-                        html += '<p class="arthur-ai-result-message">' + result.message + '</p>';
+                    html += '<div class="arthur-ai-action-report">';
+                    html += '<div class="arthur-ai-report-header">';
+                    html += '<h3>Action report</h3>';
+                    html += '<p>See how Arthur handled each step of your request.</p>';
+                    html += '</div>';
+                    html += '<ul class="arthur-ai-report-list">';
+
+                    if (actionsList.length) {
+                        actionsList.forEach(function (item) {
+                            var actionType = item.action_type || item.type || 'unknown';
+                            var supported = allowedActions.indexOf(actionType) !== -1;
+                            var status = supported ? 'safe' : 'warning';
+                            var detail = supported
+                                ? 'This matches a known Arthur action.'
+                                : 'Not in the current action database. Proceed with caution.';
+
+                            if (item.status === 'safe' || item.status === 'warning' || item.status === 'error') {
+                                status = item.status;
+                            }
+                            if (item.success === false) {
+                                status = 'error';
+                            }
+                            if (item.success === true && status !== 'safe' && supported) {
+                                status = 'safe';
+                            }
+                            if (item.message) {
+                                detail = item.message;
+                            } else if (item.detail) {
+                                detail = item.detail;
+                            }
+
+                            html += renderStatusRow({
+                                title: formatActionLabel(actionType),
+                                detail: detail,
+                                status: status
+                            });
+                        });
                     }
+
+                    if (result && result.message && result.success !== false) {
+                        html += renderStatusRow({
+                            title: 'Result',
+                            detail: result.message,
+                            status: 'safe'
+                        });
+                    } else if (result && result.message && result.success === false) {
+                        html += renderStatusRow({
+                            title: 'Result detail',
+                            detail: result.message,
+                            status: 'error'
+                        });
+                    } else if (!actionsList.length) {
+                        html += renderStatusRow({
+                            title: formatActionLabel(action.action_type || 'unknown'),
+                            detail: 'Arthur processed your request.',
+                            status: 'warning'
+                        });
+                    }
+
+                    html += '</ul>';
+                    html += '</div>';
 
                     if (postId && arthurAiAdmin.editPostUrlBase) {
                         var editUrl = arthurAiAdmin.editPostUrlBase + postId;
