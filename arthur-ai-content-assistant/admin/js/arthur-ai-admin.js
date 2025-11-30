@@ -157,11 +157,23 @@ jQuery(document).ready(function ($) {
                         detailText = result.message || 'Arthur could not complete this action.';
                     }
 
+                    var supportedAction = allowedActions.indexOf(actionType) !== -1;
+                    var actionStatus = supportedAction ? 'safe' : 'warning';
+                    var detailText = supportedAction
+                        ? 'This matches a known Arthur action.'
+                        : 'Not in the current action database. Proceed with caution.';
+
+                    if (result && result.success === false) {
+                        actionStatus = 'error';
+                        detailText = result.message || 'Arthur could not complete this action.';
+                    }
+
                     html += '<div class="arthur-ai-result-card">';
                     html += '<div class="arthur-ai-result-header">';
                     html += '<div class="arthur-ai-result-meta">';
                     html += '<span class="arthur-ai-pill ' + (result.success === false ? 'arthur-ai-pill-error' : 'arthur-ai-pill-success') + '">' + (result.success === false ? 'Issue' : 'Success') + '</span>';
                     html += '<span class="arthur-ai-result-action">' + (arthurAiAdmin.i18nActionType || 'Action type') + ': <code>' + escapeHtml(primaryActionType) + '</code></span>';
+                    html += '<span class="arthur-ai-result-action">' + (arthurAiAdmin.i18nActionType || 'Action type') + ': <code>' + escapeHtml(actionType) + '</code></span>';
                     if (postId) {
                         html += '<span class="arthur-ai-result-target">Post ID: ' + postId + '</span>';
                     } else {
@@ -225,6 +237,41 @@ jQuery(document).ready(function ($) {
                         html += renderStatusRow({
                             title: formatActionLabel(action.action_type || 'unknown'),
                             detail: 'Arthur processed your request.',
+                            status: 'warning'
+                        });
+                    }
+
+
+                    html += '<div class="arthur-ai-action-report">';
+                    html += '<div class="arthur-ai-report-header">';
+                    html += '<h3>Action report</h3>';
+                    html += '<p>See how Arthur handled each step of your request.</p>';
+                    html += '</div>';
+                    html += '<ul class="arthur-ai-report-list">';
+                    html += renderStatusRow({
+                        title: formatActionLabel(actionType),
+                        detail: detailText,
+                        status: actionStatus
+                    });
+
+                    if (result && result.message && result.success !== false) {
+                        html += renderStatusRow({
+                            title: 'Result',
+                            detail: result.message,
+                            status: 'safe'
+                        });
+                    } else if (result && result.message && result.success === false) {
+                        html += renderStatusRow({
+                            title: 'Result detail',
+                            detail: result.message,
+                            status: 'error'
+                        });
+                    }
+
+                    if (!supportedAction) {
+                        html += renderStatusRow({
+                            title: 'Verification needed',
+                            detail: 'This action is not in the trusted list and may need manual review or admin approval.',
                             status: 'warning'
                         });
                     }
