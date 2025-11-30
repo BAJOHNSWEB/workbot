@@ -14,7 +14,11 @@ class Arthur_AI_Action_Change_Login_Bg_Color implements Arthur_AI_Action_Interfa
     }
 
     public function execute( array $payload ) {
-        if ( empty( trim( $payload['background_color'] ?? '' ) ) ) {
+        if ( empty( $payload['background_color'] ) && ! empty( $payload['color'] ) ) {
+            $payload['background_color'] = $payload['color'];
+        }
+
+        if ( empty( $payload['background_color'] ) ) {
             return array(
                 'success' => false,
                 'message' => 'No background_color value provided.',
@@ -25,9 +29,9 @@ class Arthur_AI_Action_Change_Login_Bg_Color implements Arthur_AI_Action_Interfa
         update_option( 'arthur_ai_login_background_color', $colour );
 
         return array(
-            'success'  => true,
-            'message'  => 'Login background colour saved.',
-            'data'     => array(
+            'success' => true,
+            'message' => 'Login background colour saved.',
+            'data'    => array(
                 'background_color' => $colour,
             ),
         );
