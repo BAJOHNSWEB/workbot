@@ -236,6 +236,132 @@
     margin-top: 10px;
 }
 
+.arthur-ai-action-report {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e2e2;
+}
+
+.arthur-ai-report-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 10px;
+}
+
+.arthur-ai-report-header h3 {
+    margin: 0;
+}
+
+.arthur-ai-report-header p {
+    margin: 0;
+    color: #555d66;
+    font-size: 13px;
+}
+
+.arthur-ai-report-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.arthur-ai-report-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid #dcdcdc;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.arthur-ai-report-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1d2327;
+    flex-shrink: 0;
+}
+
+.arthur-ai-report-copy {
+    flex: 1;
+}
+
+.arthur-ai-report-title {
+    font-weight: 600;
+    margin: 0 0 2px;
+}
+
+.arthur-ai-report-detail {
+    margin: 0;
+    color: #555d66;
+    font-size: 13px;
+}
+
+.arthur-ai-report-tag {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.arthur-ai-report-item.is-safe {
+    border-color: #c8ead0;
+    background: #f5fbf6;
+}
+
+.arthur-ai-report-item.is-safe .arthur-ai-report-icon {
+    background: #27ae60;
+    color: #fff;
+}
+
+.arthur-ai-report-item.is-safe .arthur-ai-report-tag {
+    background: #ecf7ed;
+    color: #277a35;
+    border-color: #c8ead0;
+}
+
+.arthur-ai-report-item.is-warning {
+    border-color: #ffe3b3;
+    background: #fffaf2;
+}
+
+.arthur-ai-report-item.is-warning .arthur-ai-report-icon {
+    background: #ffb900;
+    color: #1d2327;
+}
+
+.arthur-ai-report-item.is-warning .arthur-ai-report-tag {
+    background: #fff4e5;
+    color: #965c00;
+    border-color: #ffe3b3;
+}
+
+.arthur-ai-report-item.is-error {
+    border-color: #f3c2c3;
+    background: #fdf4f4;
+}
+
+.arthur-ai-report-item.is-error .arthur-ai-report-icon {
+    background: #d63638;
+    color: #fff;
+}
+
+.arthur-ai-report-item.is-error .arthur-ai-report-tag {
+    background: #fbeaea;
+    color: #8a2424;
+    border-color: #f3c2c3;
+}
+
 .arthur-ai-pill {
     display: inline-flex;
     align-items: center;

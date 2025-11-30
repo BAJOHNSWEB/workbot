@@ -22,6 +22,51 @@ jQuery(document).ready(function ($) {
         return;
     }
 
+    var allowedActions = Array.isArray(arthurAiAdmin.allowedActions) ? arthurAiAdmin.allowedActions : [];
+
+    function escapeHtml(str) {
+        return $('<div>').text(str || '').html();
+    }
+
+    function formatActionLabel(actionType) {
+        if (!actionType) {
+            return 'Unknown action';
+        }
+        return actionType.replace(/_/g, ' ').replace(/\b\w/g, function (c) {
+            return c.toUpperCase();
+        });
+    }
+
+    function renderStatusRow(opts) {
+        var statusClass = 'is-unknown';
+        var icon = '!';
+        var label = 'Untested';
+
+        if (opts.status === 'safe') {
+            statusClass = 'is-safe';
+            icon = '✓';
+            label = 'Safe';
+        } else if (opts.status === 'warning') {
+            statusClass = 'is-warning';
+            icon = '!';
+            label = 'Untested';
+        } else if (opts.status === 'error') {
+            statusClass = 'is-error';
+            icon = '✕';
+            label = 'Unable';
+        }
+
+        return '' +
+            '<li class="arthur-ai-report-item ' + statusClass + '">' +
+            '  <span class="arthur-ai-report-icon" aria-hidden="true">' + icon + '</span>' +
+            '  <div class="arthur-ai-report-copy">' +
+            '    <div class="arthur-ai-report-title">' + escapeHtml(opts.title) + '</div>' +
+            '    <div class="arthur-ai-report-detail">' + escapeHtml(opts.detail) + '</div>' +
+            '  </div>' +
+            '  <span class="arthur-ai-report-tag">' + label + '</span>' +
+            '</li>';
+    }
+
     $form.on('submit', function (e) {
         e.preventDefault();
 
@@ -70,20 +115,66 @@ jQuery(document).ready(function ($) {
                     var postId  = result.post_id || action.target_post_id || null;
                     var actionType = action.action_type || 'unknown';
 
+                    var supportedAction = allowedActions.indexOf(actionType) !== -1;
+                    var actionStatus = supportedAction ? 'safe' : 'warning';
+                    var detailText = supportedAction
+                        ? 'This matches a known Arthur action.'
+                        : 'Not in the current action database. Proceed with caution.';
+
+                    if (result && result.success === false) {
+                        actionStatus = 'error';
+                        detailText = result.message || 'Arthur could not complete this action.';
+                    }
+
                     html += '<div class="arthur-ai-result-card">';
                     html += '<div class="arthur-ai-result-header">';
-                    html += '<span class="arthur-ai-pill arthur-ai-pill-success">Success</span>';
-                    html += '<span class="arthur-ai-result-action">' + arthurAiAdmin.i18nActionType + ': <code>' + actionType + '</code></span>';
+                    html += '<div class="arthur-ai-result-meta">';
+                    html += '<span class="arthur-ai-pill ' + (result.success === false ? 'arthur-ai-pill-error' : 'arthur-ai-pill-success') + '">' + (result.success === false ? 'Issue' : 'Success') + '</span>';
+                    html += '<span class="arthur-ai-result-action">' + (arthurAiAdmin.i18nActionType || 'Action type') + ': <code>' + escapeHtml(actionType) + '</code></span>';
                     if (postId) {
                         html += '<span class="arthur-ai-result-target">Post ID: ' + postId + '</span>';
                     } else {
                         html += '<span class="arthur-ai-result-target">' + (arthurAiAdmin.i18nSiteWide || 'Site-wide action') + '</span>';
                     }
                     html += '</div>';
+                    html += '</div>';
 
-                    if (result.message) {
-                        html += '<p class="arthur-ai-result-message">' + result.message + '</p>';
+                    html += '<div class="arthur-ai-action-report">';
+                    html += '<div class="arthur-ai-report-header">';
+                    html += '<h3>Action report</h3>';
+                    html += '<p>See how Arthur handled each step of your request.</p>';
+                    html += '</div>';
+                    html += '<ul class="arthur-ai-report-list">';
+                    html += renderStatusRow({
+                        title: formatActionLabel(actionType),
+                        detail: detailText,
+                        status: actionStatus
+                    });
+
+                    if (result && result.message && result.success !== false) {
+                        html += renderStatusRow({
+                            title: 'Result',
+                            detail: result.message,
+                            status: 'safe'
+                        });
+                    } else if (result && result.message && result.success === false) {
+                        html += renderStatusRow({
+                            title: 'Result detail',
+                            detail: result.message,
+                            status: 'error'
+                        });
                     }
+
+                    if (!supportedAction) {
+                        html += renderStatusRow({
+                            title: 'Verification needed',
+                            detail: 'This action is not in the trusted list and may need manual review or admin approval.',
+                            status: 'warning'
+                        });
+                    }
+
+                    html += '</ul>';
+                    html += '</div>';
 
                     if (postId && arthurAiAdmin.editPostUrlBase) {
                         var editUrl = arthurAiAdmin.editPostUrlBase + postId;
