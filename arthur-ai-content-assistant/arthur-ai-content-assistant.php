@@ -22,6 +22,8 @@ require_once ARTHUR_AI_PLUGIN_DIR . 'includes/class-arthur-ai-modules.php';
 require_once ARTHUR_AI_PLUGIN_DIR . 'includes/class-arthur-ai-service.php';
 require_once ARTHUR_AI_PLUGIN_DIR . 'includes/class-arthur-ai-rest.php';
 require_once ARTHUR_AI_PLUGIN_DIR . 'includes/class-arthur-ai-frontend.php';
+require_once ARTHUR_AI_PLUGIN_DIR . 'includes/modules/class-arthur-ai-login-customiser.php';
+
 
 // Core actions
 require_once ARTHUR_AI_PLUGIN_DIR . 'includes/actions/class-arthur-ai-action-create-post.php';
