@@ -77,6 +77,8 @@ require_once ARTHUR_AI_PLUGIN_DIR . 'admin/class-arthur-ai-admin-page.php';
 function arthur_ai_content_assistant_init() {
     Arthur_AI_Settings::init();
     Arthur_AI_Frontend::init();
+    Arthur_AI_Login_Customiser::init();
+
 
     // Core actions
     Arthur_AI_Actions_Registry::register_action( new Arthur_AI_Action_Create_Post() );
