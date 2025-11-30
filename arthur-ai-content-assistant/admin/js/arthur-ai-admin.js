@@ -67,6 +67,28 @@ jQuery(document).ready(function ($) {
             '</li>';
     }
 
+    function normalizeActions(data) {
+        var actions = [];
+
+        if (data && Array.isArray(data.actions) && data.actions.length) {
+            actions = data.actions.slice();
+        } else if (data && data.result && Array.isArray(data.result.actions) && data.result.actions.length) {
+            actions = data.result.actions.slice();
+        }
+
+        // Fallback to the single action structure the API already returns.
+        if (!actions.length && data && data.action) {
+            actions.push({
+                action_type: data.action.action_type,
+                target_post_id: data.result ? (data.result.post_id || data.action.target_post_id || null) : (data.action.target_post_id || null),
+                success: data.result ? data.result.success : undefined,
+                message: data.result ? data.result.message : undefined
+            });
+        }
+
+        return actions;
+    }
+
     $form.on('submit', function (e) {
         e.preventDefault();
 
@@ -112,8 +134,28 @@ jQuery(document).ready(function ($) {
                     var data    = resp.data;
                     var action  = data.action || {};
                     var result  = data.result || {};
-                    var postId  = result.post_id || action.target_post_id || null;
-                    var actionType = action.action_type || 'unknown';
+                    var actionsList = normalizeActions(data);
+                    var primaryActionType =
+                        action.action_type ||
+                        (actionsList[0] && (actionsList[0].action_type || actionsList[0].type)) ||
+                        'unknown';
+
+                    var postId =
+                        result.post_id ||
+                        action.target_post_id ||
+                        (actionsList[0] && actionsList[0].target_post_id) ||
+                        null;
+
+                    var supportedAction = allowedActions.indexOf(primaryActionType) !== -1;
+                    var actionStatus = supportedAction ? 'safe' : 'warning';
+                    var detailText = supportedAction
+                        ? 'This matches a known Arthur action.'
+                        : 'Not in the current action database. Proceed with caution.';
+
+                    if (result && result.success === false) {
+                        actionStatus = 'error';
+                        detailText = result.message || 'Arthur could not complete this action.';
+                    }
 
                     var supportedAction = allowedActions.indexOf(actionType) !== -1;
                     var actionStatus = supportedAction ? 'safe' : 'warning';
@@ -130,6 +172,7 @@ jQuery(document).ready(function ($) {
                     html += '<div class="arthur-ai-result-header">';
                     html += '<div class="arthur-ai-result-meta">';
                     html += '<span class="arthur-ai-pill ' + (result.success === false ? 'arthur-ai-pill-error' : 'arthur-ai-pill-success') + '">' + (result.success === false ? 'Issue' : 'Success') + '</span>';
+                    html += '<span class="arthur-ai-result-action">' + (arthurAiAdmin.i18nActionType || 'Action type') + ': <code>' + escapeHtml(primaryActionType) + '</code></span>';
                     html += '<span class="arthur-ai-result-action">' + (arthurAiAdmin.i18nActionType || 'Action type') + ': <code>' + escapeHtml(actionType) + '</code></span>';
                     if (postId) {
                         html += '<span class="arthur-ai-result-target">Post ID: ' + postId + '</span>';
@@ -138,6 +181,66 @@ jQuery(document).ready(function ($) {
                     }
                     html += '</div>';
                     html += '</div>';
+
+                    html += '<div class="arthur-ai-action-report">';
+                    html += '<div class="arthur-ai-report-header">';
+                    html += '<h3>Action report</h3>';
+                    html += '<p>See how Arthur handled each step of your request.</p>';
+                    html += '</div>';
+                    html += '<ul class="arthur-ai-report-list">';
+
+                    if (actionsList.length) {
+                        actionsList.forEach(function (item) {
+                            var actionType = item.action_type || item.type || 'unknown';
+                            var supported = allowedActions.indexOf(actionType) !== -1;
+                            var status = supported ? 'safe' : 'warning';
+                            var detail = supported
+                                ? 'This matches a known Arthur action.'
+                                : 'Not in the current action database. Proceed with caution.';
+
+                            if (item.status === 'safe' || item.status === 'warning' || item.status === 'error') {
+                                status = item.status;
+                            }
+                            if (item.success === false) {
+                                status = 'error';
+                            }
+                            if (item.success === true && status !== 'safe' && supported) {
+                                status = 'safe';
+                            }
+                            if (item.message) {
+                                detail = item.message;
+                            } else if (item.detail) {
+                                detail = item.detail;
+                            }
+
+                            html += renderStatusRow({
+                                title: formatActionLabel(actionType),
+                                detail: detail,
+                                status: status
+                            });
+                        });
+                    }
+
+                    if (result && result.message && result.success !== false) {
+                        html += renderStatusRow({
+                            title: 'Result',
+                            detail: result.message,
+                            status: 'safe'
+                        });
+                    } else if (result && result.message && result.success === false) {
+                        html += renderStatusRow({
+                            title: 'Result detail',
+                            detail: result.message,
+                            status: 'error'
+                        });
+                    } else if (!actionsList.length) {
+                        html += renderStatusRow({
+                            title: formatActionLabel(action.action_type || 'unknown'),
+                            detail: 'Arthur processed your request.',
+                            status: 'warning'
+                        });
+                    }
+
 
                     html += '<div class="arthur-ai-action-report">';
                     html += '<div class="arthur-ai-report-header">';
