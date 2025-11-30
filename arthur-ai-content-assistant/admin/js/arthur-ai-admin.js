@@ -80,9 +80,9 @@ jQuery(document).ready(function ($) {
         if (!actions.length && data && data.action) {
             actions.push({
                 action_type: data.action.action_type,
-                target_post_id: data.result ? (data.result.post_id || data.action.target_post_id || null) : null,
+                target_post_id: data.result ? (data.result.post_id || data.action.target_post_id || null) : (data.action.target_post_id || null),
                 success: data.result ? data.result.success : undefined,
-                message: data.result ? data.result.message : undefined,
+                message: data.result ? data.result.message : undefined
             });
         }
 
@@ -134,9 +134,28 @@ jQuery(document).ready(function ($) {
                     var data    = resp.data;
                     var action  = data.action || {};
                     var result  = data.result || {};
-                    var postId  = result.post_id || action.target_post_id || null;
                     var actionsList = normalizeActions(data);
-                    var primaryActionType = action.action_type || (actionsList[0] && (actionsList[0].action_type || actionsList[0].type)) || "unknown";
+                    var primaryActionType =
+                        action.action_type ||
+                        (actionsList[0] && (actionsList[0].action_type || actionsList[0].type)) ||
+                        'unknown';
+
+                    var postId =
+                        result.post_id ||
+                        action.target_post_id ||
+                        (actionsList[0] && actionsList[0].target_post_id) ||
+                        null;
+
+                    var supportedAction = allowedActions.indexOf(primaryActionType) !== -1;
+                    var actionStatus = supportedAction ? 'safe' : 'warning';
+                    var detailText = supportedAction
+                        ? 'This matches a known Arthur action.'
+                        : 'Not in the current action database. Proceed with caution.';
+
+                    if (result && result.success === false) {
+                        actionStatus = 'error';
+                        detailText = result.message || 'Arthur could not complete this action.';
+                    }
 
                     html += '<div class="arthur-ai-result-card">';
                     html += '<div class="arthur-ai-result-header">';
