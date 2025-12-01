@@ -13,29 +13,38 @@ class Arthur_AI_Action_Set_Login_Custom_CSS implements Arthur_AI_Action_Interfac
         return __( 'Set Login Custom CSS', 'arthur-ai' );
     }
 
+    /**
+     * Execute the action.
+     *
+     * Expected payload:
+     *   fields = {
+     *     "css": string
+     *   }
+     *
+     * The CSS string is stored in the arthur_ai_login_custom_css option and
+     * injected on wp-login.php by Arthur_AI_Login_Customiser.
+     *
+     * @param array $payload
+     * @return array
+     */
     public function execute( array $payload ) {
-        $css = '';
+        $css = isset( $payload['css'] ) ? (string) $payload['css'] : '';
 
-        if ( isset( $payload['css'] ) ) {
-            $css = (string) $payload['css'];
-            $css = wp_unslash( $css );
-            $css = trim( $css );
-        }
-
-        if ( '' === $css ) {
+        if ( '' === trim( $css ) ) {
             return array(
                 'success' => false,
-                'message' => 'No CSS provided.',
+                'message' => __( 'No CSS was provided to save.', 'arthur-ai' ),
             );
         }
 
+        // No escaping here – this is trusted admin-side usage and is escaped at output time.
         update_option( 'arthur_ai_login_custom_css', $css );
 
         return array(
             'success' => true,
-            'message' => 'Login custom CSS saved.',
+            'message' => __( 'Login custom CSS saved.', 'arthur-ai' ),
             'data'    => array(
-                'length' => strlen( $css ),
+                'css_length' => strlen( $css ),
             ),
         );
     }
