@@ -8,6 +8,22 @@ class Arthur_AI_Service {
     const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
     const MODEL    = 'gpt-4.1-mini';
 
+        /**
+     * Mark certain actions as higher-risk because they apply custom code (CSS/JS).
+     *
+     * @param string $action_type
+     * @return bool
+     */
+    public static function is_risky_action_type( $action_type ) {
+        $risky_actions = array(
+            'set_login_custom_css',
+            'set_login_custom_js', // if/when you add this
+        );
+
+        return in_array( $action_type, $risky_actions, true );
+    }
+
+
     /**
      * Call the AI and get an action + fields.
      *
