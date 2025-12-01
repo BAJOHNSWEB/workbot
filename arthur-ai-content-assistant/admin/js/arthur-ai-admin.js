@@ -6,6 +6,9 @@ jQuery(document).ready(function ($) {
     var $submitLabel = $submit.find('.arthur-ai-submit-label');
     var defaultLabel = $submitLabel.text();
 
+        var riskyActions = ['set_login_custom_css', 'set_login_custom_js']; // extend as needed
+
+
     // Tab switching
     $('.arthur-ai-tab-button').on('click', function () {
         var $btn = $(this);
