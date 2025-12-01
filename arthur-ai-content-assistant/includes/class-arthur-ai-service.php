@@ -130,7 +130,10 @@ class Arthur_AI_Service {
         $system_message .= "   - Use when editing block theme headers/footers (wp_template/wp_template_part). Prefer this for phrases like \"Designed with WordPress\" when using a block theme such as Twenty Twenty-Five.\n\n";
         $system_message .= "Do NOT include markdown, comments or extra keys. Respond with JSON only.";
 
-           
+                   $system_message .= "15) set_login_custom_css:\n";
+        $system_message .= "   fields = { \"css\": string }\n";
+        $system_message .= "   - Use this when the user asks for a small visual tweak on the login page that is best done with CSS (e.g. changing the welcome message font colour). Write minimal, targeted CSS only.\n";
+
 
 
 
