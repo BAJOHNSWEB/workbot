@@ -4,7 +4,10 @@
  * Description: AI assistant to create and edit WordPress content.
  * Author: Arthur
  * Version: 3.2.1
+ * GitHub Plugin URI: BAJOHNSWEB/workbot
+ * Primary Branch: main
  */
+
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
