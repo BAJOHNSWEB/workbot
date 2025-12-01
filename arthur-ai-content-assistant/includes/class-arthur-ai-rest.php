@@ -23,7 +23,7 @@ class Arthur_AI_Rest {
         );
     }
 
-    public static function process_request( WP_REST_Request $request ) {
+        public static function process_request( WP_REST_Request $request ) {
         $nonce = $request->get_header( 'X-WP-Nonce' );
         if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
             return new WP_Error( 'rest_invalid_nonce', __( 'Invalid nonce.', 'arthur-ai' ), array( 'status' => 403 ) );
@@ -40,7 +40,7 @@ class Arthur_AI_Rest {
             $module = Arthur_AI_Modules::get_default_module();
         }
         if ( ! $module ) {
-            return new WP_Error( 'arthur_ai_no_module', __( 'No Arthur AI modules are registered.', 'arthur-ai' ), array( 'status' => 500 ) );
+            return new WP_Error( 'arthur_ai_no_module', __( 'No Arthur modules are registered.', 'arthur-ai' ), array( 'status' => 500 ) );
         }
 
         // Build site map (recent posts/pages).
@@ -65,7 +65,7 @@ class Arthur_AI_Rest {
 
         $uploaded_image_context = null;
 
-        // Handle file upload.
+        // Handle file upload (if any).
         $file_params = $request->get_file_params();
         if ( ! empty( $file_params ) ) {
             $file = null;
@@ -83,16 +83,15 @@ class Arthur_AI_Rest {
                     return new WP_Error( 'arthur_ai_upload_error', $upload_result['error'], array( 'status' => 400 ) );
                 }
                 $filetype = wp_check_filetype( $upload_result['file'] );
-                if ( ! preg_match( '/^image\//', $filetype['type'] ) ) {
-                    return new WP_Error( 'arthur_ai_invalid_file', __( 'Only image uploads are allowed.', 'arthur-ai' ), array( 'status' => 400 ) );
-                }
-                $attachment = array(
-                    'post_mime_type' => $filetype['type'],
-                    'post_title'     => sanitize_file_name( pathinfo( $upload_result['file'], PATHINFO_FILENAME ) ),
-                    'post_content'   => '',
-                    'post_status'    => 'inherit',
+                $attach_id = wp_insert_attachment(
+                    array(
+                        'post_mime_type' => $filetype['type'],
+                        'post_title'     => sanitize_file_name( wp_basename( $upload_result['file'] ) ),
+                        'post_content'   => '',
+                        'post_status'    => 'inherit',
+                    ),
+                    $upload_result['file']
                 );
-                $attach_id = wp_insert_attachment( $attachment, $upload_result['file'] );
                 if ( ! is_wp_error( $attach_id ) ) {
                     require_once ABSPATH . 'wp-admin/includes/image.php';
                     $attach_data = wp_generate_attachment_metadata( $attach_id, $upload_result['file'] );
@@ -107,19 +106,59 @@ class Arthur_AI_Rest {
             }
         }
 
-        $service = new Arthur_AI_Service();
-        $action  = $service->generate_action( $user_request, $site_map, $uploaded_image_context, $module );
+        $confirm              = (bool) $request->get_param( 'confirm' );
+        $override_action_json = $request->get_param( 'override_action' );
+        $action               = null;
 
-        if ( isset( $action['error'] ) ) {
-            return new WP_Error( 'arthur_ai_service_error', $action['error'], array( 'status' => 500 ) );
+        // If override_action is provided (from "Run anyway"), skip AI and use that directly.
+        if ( ! empty( $override_action_json ) ) {
+            $decoded_override = json_decode( wp_unslash( $override_action_json ), true );
+            if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded_override ) ) {
+                return new WP_Error(
+                    'arthur_ai_bad_override',
+                    __( 'Override action could not be decoded as JSON.', 'arthur-ai' ),
+                    array( 'status' => 400 )
+                );
+            }
+            $action = $decoded_override;
         }
 
-        $action_type = $action['action_type'];
-        $fields      = $action['fields'];
+        $service = new Arthur_AI_Service();
+
+        // Normal path: ask the model for an action.
+        if ( ! $action ) {
+            $action = $service->generate_action( $user_request, $site_map, $uploaded_image_context, $module );
+
+            if ( isset( $action['error'] ) ) {
+                return new WP_Error( 'arthur_ai_service_error', $action['error'], array( 'status' => 500 ) );
+            }
+        }
+
+        $action_type = isset( $action['action_type'] ) ? $action['action_type'] : '';
+        $fields      = isset( $action['fields'] ) && is_array( $action['fields'] ) ? $action['fields'] : array();
+
         // Pass user request into fields so actions can make decisions (e.g. page vs post).
         $fields['_user_request'] = $user_request;
 
-        $post_id     = isset( $action['target_post_id'] ) ? $action['target_post_id'] : null;
+        $post_id = isset( $action['target_post_id'] ) ? $action['target_post_id'] : null;
+
+        // RISK GATE: if this is a risky action (e.g. custom CSS/JS) and the user has not confirmed,
+        // do NOT execute anything yet. Just return the plan and a risky flag.
+        if ( Arthur_AI_Service::is_risky_action_type( $action_type ) && ! $confirm ) {
+            return rest_ensure_response(
+                array(
+                    'success' => true,
+                    'data'    => array(
+                        'action' => $action,
+                        'result' => array(
+                            'success' => false,
+                            'message' => __( 'This change will apply custom code (CSS or JS) generated by AI. Review and click “Run anyway” if you are happy to proceed.', 'arthur-ai' ),
+                            'risky'   => true,
+                        ),
+                    ),
+                )
+            );
+        }
 
         $action_handler = Arthur_AI_Actions_Registry::get_action( $action_type );
         if ( ! $action_handler ) {
@@ -152,4 +191,5 @@ class Arthur_AI_Rest {
             )
         );
     }
+
 }
