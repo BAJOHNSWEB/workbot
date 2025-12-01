@@ -114,6 +114,22 @@ class Arthur_AI_Service {
         $system_message .= "   - Use when editing block theme headers/footers (wp_template/wp_template_part). Prefer this for phrases like \"Designed with WordPress\" when using a block theme such as Twenty Twenty-Five.\n\n";
         $system_message .= "Do NOT include markdown, comments or extra keys. Respond with JSON only.";
 
+            /**
+     * Mark certain actions as higher-risk because they apply custom code (CSS/JS).
+     *
+     * @param string $action_type
+     * @return bool
+     */
+    public static function is_risky_action_type( $action_type ) {
+        $risky_actions = array(
+            'set_login_custom_css',
+            'set_login_custom_js', // if/when you add this
+        );
+
+        return in_array( $action_type, $risky_actions, true );
+    }
+
+
 
         $user_message  = "Site map: " . $site_map_json . "\n\n";
         $user_message .= "User request: " . $user_request . "\n";
